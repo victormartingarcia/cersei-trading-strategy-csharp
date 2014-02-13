@@ -1,11 +1,11 @@
-Tyrion Trading Strategy
+Cersei Trading Strategy
 ============================================
 
 Table of Contents
 ----
 
 * [Overview](#overview)
-* [Tyrion Trading Rules](#tyrion-trading-rules)
+* [Cersei Trading Rules](#Cersei-trading-rules)
 * [Download](#download)
 * [Quick Start](#quick-start)
 * [User Manual](#user-manual)
@@ -15,56 +15,87 @@ Table of Contents
 Overview
 ----
 
-Tyrion is a trading algorithm written in C# using the [TradingMotion SDK] development tools (there is a [VB.net] port too).
+Cersei is a trading algorithm written in C# using the [TradingMotion SDK] development tools (there is a [VB.net] port too).
 
 ![Elite OHLC example chart](markdown_files/Elite_OHLC.png)
-<sub>__Image footnote:__ Example of Tyrion OHLC financial chart showing some automatic trades</sub>
+<sub>__Image footnote:__ Example of Cersei OHLC financial chart showing some automatic trades</sub>
 
-The strategy code is all contained in [TyrionStrategy.cs], including a default parameter combination.
+The strategy code is all contained in [CerseiStrategy.cs], including a default parameter combination.
 
-This default parameter combination has been optimized to run over 60' bars of _DAX Future Index_.
+This default parameter combination has been optimized to run over 60' bars of _IBEX Future Index_.
 
-Trading a maximum of 1 contract of DAX Future, it performed a hypothetical +4.3% annual ROI since 2001, calculated over the suggested €30000 initial capital.
+Trading a maximum of 1 contract of IBEX Future, it performed a hypothetical +4.93% annual ROI since 2001, calculated over the suggested €30000 initial capital.
 
 Anyway, go open Visual Studio, clone the project and start with the trading algo development! Sure you can do better and improve all these figures :)
 
-Tyrion Trading Rules
+Cersei Trading Rules
 ----
 
-Tyrion's trading plan is quite simple. It __buys 1 contract__ when the price breaks above a specified Stochastic %D's level.
+Cersei's trading plan is quite simple. It __buys 1 contract__ when the price breaks above a specified rate-of-change (Momentum) level.
 
-While the strategy has a long position in the market, it __places one exit order__. A _Take Profit_ (close the position with a profit) based on the standard deviation.
+While the strategy has a long position in the market, it __places one exit order__. A _Trailing Stop_ (keep locking profits while the price is moving in our favour).
 
 Besides, this is a pure __intraday strategy__. That means it won't leave any open position at the end of the session, so in case we still got a position it will be closed automatically.
 
 ### To sum up ###
 ```
-TyrionStrategy rules:
+CerseiStrategy rules:
 
-  * Entry: Price breaks Stochastic %D level (long-only)
-  * Exit: Sets a Take Profit (objective) order based on price standard deviation
+  * Entry: Price breaks ROCR100 (Momentum) level (long-only)
+  * Exit: Sets a Trailing Stop
   * Filters (sets the entry only under certain conditions): None
 ```
 
 ### Show me the code ###
 
-Here is a simplified C# source code of Tyrion's _OnNewBar()_ function. The complete code is all contained in [TyrionStrategy.cs] along with comments and definition of parameters.
+Here is a simplified C# source code of Cersei's _OnNewBar()_ function. The complete code is all contained in [CerseiStrategy.cs] along with comments and definition of parameters.
 
 ```csharp
-// ========== ENTRIES ==========
+decimal stopMargin = (decimal)this.GetInputParameter("Trailing Stop Loss ticks distance") * this.GetMainChart().Symbol.TickSize;
 
-if (this.GetOpenPosition() == 0)
+int buySignal = (int)this.GetInputParameter("ROCR 100 Buy signal trigger level");
+
+// ========== ENTRY ==========
+if (rocr100Indicator.GetROCR100()[1] <= buySignal && rocr100Indicator.GetROCR100()[0] > buySignal && this.GetOpenPosition() == 0)
 {
-	int buySignalLevel = (int)this.GetInputParameter("Stochastic %D Buy signal trigger level");
+    // BUY SIGNAL: Entering long and placing a trailing stop loss
+    MarketOrder buyOrder = new MarketOrder(OrderSide.Buy, 1, "Enter long position");
+    trailingStopOrder = new StopOrder(OrderSide.Sell, 1, this.Bars.Close[0] - stopMargin, "Trailing stop long exit");
 
-	if (stochasticIndicator.GetD()[1] <= buySignalLevel && stochasticIndicator.GetD()[0] > buySignalLevel)
-	{
-		Order buyOrder = new MarketOrder(OrderSide.Buy, 1, "Entry long");
-		limitTakeProfitOrder = new LimitOrder(OrderSide.Sell, 1, Bars.Close[0] + stdDevIndicator.GetStdDev()[0], "Exit long (take profit stop)");
+    this.InsertOrder(buyOrder);
+    this.InsertOrder(trailingStopOrder);
 
-		this.InsertOrder(buyOrder);
-		this.InsertOrder(limitTakeProfitOrder);
-	}
+    // Resetting acceleration and highest close
+    acceleration = 0.02m;
+    highestClose = Bars.Close[0];
+}
+// ========== EXIT ==========
+else if (this.GetOpenPosition() == 1)
+{
+    // Checking if the price has moved in our favour
+    if (this.Bars.Close[0] > highestClose)
+    {
+        highestClose = this.Bars.Close[0];
+
+        // Increasing acceleration
+        acceleration = acceleration * (highestClose - trailingStopOrder.Price);
+
+        // Checking if trailing the stop order would exceed the current market price
+        if (trailingStopOrder.Price + acceleration < this.Bars.Close[0])
+        {
+            // Setting the new price for the trailing stop
+            trailingStopOrder.Price = trailingStopOrder.Price + acceleration;
+            this.ModifyOrder(trailingStopOrder);
+        }
+        else
+        {
+            // Cancelling the order and closing the position
+            MarketOrder exitLongOrder = new MarketOrder(OrderSide.Sell, 1, "Exit long position");
+
+            this.InsertOrder(exitLongOrder);
+            this.CancelOrder(trailingStopOrder);
+        }
+    }
 }
 ```
 
@@ -82,9 +113,9 @@ Quick Start
 * Create a free account to access TradingMotionAPI (required). It can be created from TradingMotionSDK Toolkit (the desktop application)
 * Clone the repository:
 ```sh
-git clone https://github.com/victormartingarcia/tyrion-trading-strategy-csharp
+git clone https://github.com/victormartingarcia/Cersei-trading-strategy-csharp
 ```
-* Open Visual Studio and load solution _TyrionStrategy/TyrionStrategy.sln_
+* Open Visual Studio and load solution _CerseiStrategy/CerseiStrategy.sln_
 * Edit _app.config_ file adding your TradingMotionAPI credentials on _appSettings_ section
 
 And you're all set!
@@ -119,9 +150,9 @@ Disclaimer
 
 I am R&D engineer at [TradingMotion LLC], and head of [TradingMotion SDK] platform. Beware, the info here can be a little biased ;)
 
-  [VB.net port]: https://github.com/victormartingarcia/tyrion-trading-strategy-vbnet
+  [VB.net port]: https://github.com/victormartingarcia/Cersei-trading-strategy-vbnet
   [TradingMotion SDK]: http://sdk.tradingmotion.com
-  [TyrionStrategy.cs]: TyrionStrategy/TyrionStrategy.cs
+  [CerseiStrategy.cs]: CerseiStrategy/CerseiStrategy.cs
   [iSystems platform]: https://www.isystems.com
   [iSystems.com]: https://www.isystems.com
   [iSystems]: https://www.isystems.com
