@@ -15,7 +15,7 @@ Table of Contents
 Overview
 ----
 
-Cersei is a trading algorithm written in C# using the [TradingMotion SDK] development tools (there is a [VB.net] port too).
+Cersei is a trading algorithm written in C# using the [TradingMotion SDK] development tools (there is a [VB.net port] too).
 
 ![OHLC example chart](markdown_files/OHLC.png)
 <sub>__Image footnote:__ Example of Cersei OHLC financial chart showing some automatic trades</sub>
@@ -150,7 +150,7 @@ Disclaimer
 
 I am R&D engineer at [TradingMotion LLC], and head of [TradingMotion SDK] platform. Beware, the info here can be a little biased ;)
 
-  [VB.net port]: https://github.com/victormartingarcia/Cersei-trading-strategy-vbnet
+  [VB.net port]: https://github.com/victormartingarcia/cersei-trading-strategy-vbnet
   [TradingMotion SDK]: http://sdk.tradingmotion.com
   [CerseiStrategy.cs]: CerseiStrategy/CerseiStrategy.cs
   [iSystems platform]: https://www.isystems.com
