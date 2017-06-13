@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using TradingMotion.SDK.Algorithms;
-using TradingMotion.SDK.Algorithms.InputParameters;
-using TradingMotion.SDK.Markets.Charts;
-using TradingMotion.SDK.Markets.Orders;
-using TradingMotion.SDK.Markets.Indicators.Momentum;
+using TradingMotion.SDKv2.Algorithms;
+using TradingMotion.SDKv2.Algorithms.InputParameters;
+using TradingMotion.SDKv2.Markets.Charts;
+using TradingMotion.SDKv2.Markets.Orders;
+using TradingMotion.SDKv2.Markets.Indicators.Momentum;
 
 /// <summary>
 /// Cersei rules:
@@ -19,8 +19,8 @@ namespace CerseiStrategy
         ROCR100Indicator rocr100Indicator;
         Order trailingStopOrder;
 
-        decimal acceleration;
-        decimal highestClose;
+        double acceleration;
+        double highestClose;
 
         public CerseiStrategy(Chart mainChart, List<Chart> secondaryCharts)
             : base(mainChart, secondaryCharts)
@@ -84,7 +84,7 @@ namespace CerseiStrategy
             parameters.Add(new InputParameter("ROCR 100 Period", 48));
 
             // The distance between the entry and the initial stop loss order
-            parameters.Add(new InputParameter("Trailing Stop Loss ticks distance", 85m));
+            parameters.Add(new InputParameter("Trailing Stop Loss ticks distance", 85.0));
 
             // Break level of ROCR 100 indicator we consider a buy signal
             parameters.Add(new InputParameter("ROCR 100 Buy signal trigger level", 103));
@@ -105,10 +105,10 @@ namespace CerseiStrategy
             this.AddIndicator("ROCR 100 indicator", rocr100Indicator);
 
             // Setting the initial acceleration for the trailing stop
-            acceleration = 0.02m;
+            acceleration = 0.02;
 
             // Setting the initial highest close
-            highestClose = 0m;
+            highestClose = 0.0;
         }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace CerseiStrategy
         /// </summary>
         public override void OnNewBar()
         {
-            decimal stopMargin = (decimal)this.GetInputParameter("Trailing Stop Loss ticks distance") * this.GetMainChart().Symbol.TickSize;
+            double stopMargin = (double)this.GetInputParameter("Trailing Stop Loss ticks distance") * this.GetMainChart().Symbol.TickSize;
 
             int buySignal = (int)this.GetInputParameter("ROCR 100 Buy signal trigger level");
 
@@ -130,7 +130,7 @@ namespace CerseiStrategy
                 this.InsertOrder(trailingStopOrder);
 
                 // Resetting acceleration and highest close
-                acceleration = 0.02m;
+                acceleration = 0.02;
                 highestClose = Bars.Close[0];
             }
             else if (this.GetOpenPosition() == 1)
